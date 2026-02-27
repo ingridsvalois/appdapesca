@@ -4,7 +4,7 @@ import ProductCard from "@/components/ProductCard";
 import type { ProductListResponse } from "@/types";
 import type { GetServerSideProps } from "next";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const API = "https://appdapesca-production.up.railway.app";
 
 export const getServerSideProps: GetServerSideProps<{
   result: ProductListResponse;

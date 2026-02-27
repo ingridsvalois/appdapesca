@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const API_URL = "https://appdapesca-production.up.railway.app";
 
 type RequestInitWithCredentials = RequestInit & { credentials?: "include" };
 
@@ -7,6 +7,9 @@ export async function api<T>(
   options: RequestInitWithCredentials = {}
 ): Promise<T> {
   const url = path.startsWith("http") ? path : `${API_URL}${path}`;
+  
+  console.log("📤 Requisição para:", url);
+  
   const res = await fetch(url, {
     ...options,
     credentials: "include",

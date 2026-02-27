@@ -8,9 +8,9 @@ import type { ProductListResponse } from "@/types";
 export async function getServerSideProps() {
   try {
     const [categoriesRes, productsRes] = await Promise.all([
-      fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/categories`).then((r) => r.json()),
+      fetch(`${process.env.NEXT_PUBLIC_API_URL || "https://appdapesca-production.up.railway.app"}/api/categories`).then((r) => r.json()),
       fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/products?limit=8&sort=rating`
+        `${process.env.NEXT_PUBLIC_API_URL || "https://appdapesca-production.up.railway.app"}/api/products?limit=8&sort=rating`
       ).then((r) => r.json()),
     ]);
     return {

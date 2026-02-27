@@ -6,7 +6,7 @@ import Layout from "@/components/Layout";
 import { useCartStore } from "@/store/cartStore";
 import type { GetServerSideProps } from "next";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const API = "https://appdapesca-production.up.railway.app";
 
 interface ProductDetail {
   id: string;
