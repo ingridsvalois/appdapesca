@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --gradient-start: #87AFE0;
+  --gradient-end: #F2F3B3;
+  --accent: #308E10;
+  --text-main: #333333;
+}
+
+body {
+  color: var(--text-main);
+  background: #fafafa;
+}
+
+@layer components {
+  .btn-primary {
+    @apply px-6 py-3 rounded-lg font-medium text-white transition-all;
+    background: linear-gradient(90deg, var(--gradient-start), var(--gradient-end));
+  }
+  .btn-primary:hover {
+    @apply opacity-95 shadow-md;
+  }
+  .btn-accent {
+    @apply px-6 py-3 rounded-lg font-medium text-white transition-all bg-[var(--accent)];
+  }
+  .btn-accent:hover {
+    @apply brightness-110 shadow-md;
+  }
+}

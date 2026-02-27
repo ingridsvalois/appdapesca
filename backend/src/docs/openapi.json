@@ -1,0 +1,128 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "App da Pesca API",
+    "version": "1.0.0",
+    "description": "API REST do e-commerce App da Pesca."
+  },
+  "servers": [{ "url": "/", "description": "Backend" }],
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Health check",
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/api/auth/register": {
+      "post": {
+        "summary": "Registrar usuário",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "email", "password"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "email": { "type": "string", "format": "email" },
+                  "password": { "type": "string", "minLength": 8 }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Usuário criado" }, "409": { "description": "E-mail já cadastrado" } }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "summary": "Login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password"],
+                "properties": { "email": { "type": "string" }, "password": { "type": "string" } }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "OK, cookies set" }, "401": { "description": "Credenciais inválidas" } }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "summary": "Logout",
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/api/categories": {
+      "get": {
+        "summary": "Listar categorias",
+        "responses": { "200": { "description": "Lista de categorias" } }
+      }
+    },
+    "/api/products": {
+      "get": {
+        "summary": "Listar produtos",
+        "parameters": [
+          { "name": "category", "in": "query", "schema": { "type": "string" } },
+          { "name": "search", "in": "query", "schema": { "type": "string" } },
+          { "name": "page", "in": "query", "schema": { "type": "integer" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer" } }
+        ],
+        "responses": { "200": { "description": "Lista paginada de produtos" } }
+      }
+    },
+    "/api/products/{slug}": {
+      "get": {
+        "summary": "Detalhe do produto por slug",
+        "parameters": [{ "name": "slug", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Produto" }, "404": { "description": "Não encontrado" } }
+      }
+    },
+    "/api/cart": {
+      "get": {
+        "summary": "Obter carrinho",
+        "responses": { "200": { "description": "Carrinho" } }
+      }
+    },
+    "/api/cart/items": {
+      "post": {
+        "summary": "Adicionar item ao carrinho",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["productId", "quantity"],
+                "properties": {
+                  "productId": { "type": "string" },
+                  "quantity": { "type": "integer", "minimum": 1 }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Item adicionado" } }
+      }
+    },
+    "/api/users/me": {
+      "get": {
+        "summary": "Perfil do usuário autenticado",
+        "security": [{ "cookieAuth": [] }],
+        "responses": { "200": { "description": "Usuário" }, "401": { "description": "Não autenticado" } }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "cookieAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "access_token"
+      }
+    }
+  }
+}
