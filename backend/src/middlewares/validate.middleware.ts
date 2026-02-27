@@ -15,7 +15,7 @@ export function validateBody<T>(schema: ZodSchema<T>) {
   };
 }
 
-export function validateQuery<T>(schema: ZodSchema<T>) {
+export function validateQuery(schema: ZodSchema<any>) {
   return (req: Request, res: Response, next: NextFunction): void => {
     const result = schema.safeParse(req.query);
     if (!result.success) {
