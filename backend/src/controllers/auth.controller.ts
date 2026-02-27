@@ -12,8 +12,8 @@ const COOKIE_REFRESH = "refresh_token";
 const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: env.nodeEnv === "production",
-  sameSite: env.nodeEnv === "production" ? ("strict" as const) : ("lax" as const),
-  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 dias para refresh
+  sameSite: env.nodeEnv === "production" ? ("none" as const) : ("lax" as const),
+  maxAge: 7 * 24 * 60 * 60 * 1000,
 };
 const ACCESS_MAX_AGE = 15 * 60 * 1000; // 15 min
 

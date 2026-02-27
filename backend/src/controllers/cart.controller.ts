@@ -14,8 +14,9 @@ function getCartToken(req: Request): string | null {
 function setCartTokenCookie(res: Response, token: string): void {
   res.cookie(CART_TOKEN_COOKIE, token, {
     httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
     maxAge: CART_TOKEN_MAX_AGE,
-    sameSite: "lax",
+    sameSite: process.env.NODE_ENV === "production" ? "none" as const : "lax" as const,
   });
 }
 
