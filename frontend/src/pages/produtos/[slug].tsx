@@ -73,6 +73,7 @@ export default function ProdutoSlug({ product: initialProduct }: ProdutoSlugProp
   const images = [product.mainImageUrl, ...(product.images || [])].filter(Boolean);
 
   async function addToCart() {
+    if (!product) return;
     setAdding(true);
     setMessage(null);
     try {
@@ -150,7 +151,7 @@ export default function ProdutoSlug({ product: initialProduct }: ProdutoSlugProp
                   min={1}
                   max={product.stock}
                   value={quantity}
-                  onChange={(e) => setQuantity(Math.max(1, Math.min(product.stock, parseInt(e.target.value, 10) || 1)))}
+                  onChange={(e) => setQuantity(Math.max(1, Math.min(product?.stock ?? 1, parseInt(e.target.value, 10) || 1)))}
                   className="w-20 border border-gray-300 rounded-lg px-3 py-2 text-[#333333]"
                 />
               </label>
