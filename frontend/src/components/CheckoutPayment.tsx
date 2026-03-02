@@ -4,7 +4,9 @@ import { useState } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "");
+const STRIPE_PK = "pk_test_51T5E3L4D4fwplQW7R0kwVjmned5pFhyhHRUfDcKBPoLO5PqXlK8pIj1auqlCA99fZrN4r6VPtL3vI9GUVANPcauT00zaGckZcO";
+
+const stripePromise = loadStripe(STRIPE_PK);
 
 function formatPrice(value: number): string {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
@@ -83,19 +85,6 @@ export default function CheckoutPayment({
   onSuccess: () => void;
   onBack: () => void;
 }) {
-  if (!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) {
-    return (
-      <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
-        <p className="text-amber-800">
-          Configure NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY para habilitar pagamento com cartão.
-        </p>
-        <button type="button" onClick={onBack} className="mt-2 btn-primary py-2 px-4">
-          Voltar
-        </button>
-      </div>
-    );
-  }
-
   return (
     <Elements stripe={stripePromise} options={{ clientSecret, appearance: { theme: "stripe" } }}>
       <PaymentForm
