@@ -19,7 +19,7 @@ export const createProductSchema = z.object({
   stock: z.number().int().min(0),
   categoryId: z.string().min(1),
   mainImageUrl: z.string().url(),
-  images: z.array(z.string().url()).default([]),
+  images: z.array(z.string().url()).min(1),
   isActive: z.boolean().optional().default(true),
 });
 

@@ -3,6 +3,16 @@ import { prisma } from "../config/database";
 import type { CreateProductBody, UpdateProductBody } from "../validations/product.validations";
 import type { CreateCategoryBody as CreateCatBody, UpdateCategoryBody as UpdateCatBody } from "../validations/category.validations";
 import { Decimal } from "@prisma/client/runtime/library";
+import { uploadToCloudinary } from "../services/upload.service";
+
+function slugify(str: string): string {
+  return str
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
 
 export async function listCategories(_req: Request, res: Response): Promise<void> {
   const list = await prisma.category.findMany({
@@ -14,7 +24,28 @@ export async function listCategories(_req: Request, res: Response): Promise<void
 
 export async function createCategory(req: Request, res: Response): Promise<void> {
   const body = (req as any).validBody as CreateCatBody;
-  const category = await prisma.category.create({ data: body });
+  const baseSlug = slugify(body.name);
+
+  const existing = await prisma.category.findFirst({
+    where: {
+      OR: [{ name: body.name }, { slug: baseSlug }],
+    },
+    select: { id: true, name: true, slug: true },
+  });
+
+  if (existing) {
+    res.json(existing);
+    return;
+  }
+
+  const category = await prisma.category.create({
+    data: {
+      name: body.name,
+      slug: baseSlug,
+      description: body.description,
+    },
+    select: { id: true, name: true, slug: true },
+  });
   res.status(201).json(category);
 }
 
@@ -124,6 +155,28 @@ export async function deleteProduct(req: Request, res: Response): Promise<void> 
     data: { isActive: false },
   });
   res.status(204).send();
+}
+
+export async function uploadImages(req: Request, res: Response): Promise<void> {
+  const files = (req as any).files as Express.Multer.File[] | undefined;
+
+  if (!files || files.length === 0) {
+    res.status(400).json({ message: "Nenhum arquivo enviado" });
+    return;
+  }
+
+  try {
+    const uploads = await Promise.all(
+      files.map((file) => uploadToCloudinary(file.buffer, "products"))
+    );
+
+    res.status(201).json({
+      images: uploads.map((u) => ({ url: u.url, public_id: u.publicId })),
+    });
+  } catch (err) {
+    console.error("[uploadImages] Erro ao enviar para Cloudinary", err);
+    res.status(500).json({ message: "Erro ao fazer upload das imagens" });
+  }
 }
 
 export async function listOrders(req: Request, res: Response): Promise<void> {

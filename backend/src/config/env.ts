@@ -12,6 +12,9 @@ export const env = {
   jwtRefreshSecret: process.env.JWT_REFRESH_SECRET || "change_me_refresh",
   stripeSecretKey: process.env.STRIPE_SECRET_KEY || "",
   stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET || "",
+  cloudinaryCloudName: process.env.CLOUDINARY_CLOUD_NAME || "",
+  cloudinaryApiKey: process.env.CLOUDINARY_API_KEY || "",
+  cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET || "",
 };
 
 if (!env.databaseUrl) {

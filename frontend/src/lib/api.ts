@@ -7,16 +7,23 @@ export async function api<T>(
   options: RequestInitWithCredentials = {}
 ): Promise<T> {
   const url = path.startsWith("http") ? path : `${API_URL}${path}`;
-  
+
   console.log("📤 Requisição para:", url);
-  
+
+  const isFormData = options.body instanceof FormData;
+
+  const headers: Record<string, string> = {
+    ...(options.headers as Record<string, string>),
+  };
+
+  if (!isFormData) {
+    headers["Content-Type"] = "application/json";
+  }
+
   const res = await fetch(url, {
     ...options,
     credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers as Record<string, string>),
-    },
+    headers,
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -43,4 +50,8 @@ export function apiDelete<T>(path: string) {
 
 export function apiPatch<T>(path: string, body: unknown) {
   return api<T>(path, { method: "PATCH", body: JSON.stringify(body) });
+}
+
+export function apiPostForm<T>(path: string, formData: FormData) {
+  return api<T>(path, { method: "POST", body: formData });
 }

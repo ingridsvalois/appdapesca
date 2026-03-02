@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const updateMeSchema = z.object({
-  name: z.string().min(2).max(120).optional(),
+  name: z.string().trim().min(2).max(80),
 });
 
 export const addressSchema = z.object({
