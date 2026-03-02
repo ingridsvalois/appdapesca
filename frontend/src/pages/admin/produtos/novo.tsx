@@ -257,23 +257,31 @@ export default function AdminProdutoNovo() {
               {creatingCategory ? "Cancelar" : "＋ Nova categoria"}
             </button>
           </div>
-          {creatingCategory && (
-            <form onSubmit={handleCreateCategory} className="mt-3 flex items-center gap-2">
-              <input
-                type="text"
-                value={newCategoryName}
-                onChange={(e) => setNewCategoryName(e.target.value)}
-                placeholder="Nome da nova categoria"
-                className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm"
-              />
-              <button
-                type="submit"
-                className="text-xs px-3 py-2 rounded-lg bg-accent text-white hover:bg-accent/90"
-              >
-                Criar
-              </button>
-            </form>
-          )}
+
+{creatingCategory && (
+  <div className="mt-3 flex items-center gap-2">
+    <input
+      type="text"
+      value={newCategoryName}
+      onChange={(e) => setNewCategoryName(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          handleCreateCategory(e as any);
+        }
+      }}
+      placeholder="Nome da nova categoria"
+      className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm"
+    />
+    <button
+      type="button"
+      onClick={handleCreateCategory}
+      className="text-xs px-3 py-2 rounded-lg bg-accent text-white hover:bg-accent/90"
+    >
+      Criar
+    </button>
+  </div>
+)}
         </div>
         <div>
           <label className="block text-sm font-medium text-[#333333] mb-1">

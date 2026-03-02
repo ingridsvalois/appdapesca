@@ -74,7 +74,7 @@ export default function AdminProdutoEditar() {
     });
   }, [id]);
 
-  async function handleCreateCategory(e: React.FormEvent) {
+  async function handleCreateCategory(e: React.FormEvent | React.MouseEvent) {
     e.preventDefault();
     if (!newCategoryName.trim()) return;
     try {
@@ -301,22 +301,30 @@ export default function AdminProdutoEditar() {
               {creatingCategory ? "Cancelar" : "＋ Nova categoria"}
             </button>
           </div>
+          {/* ✅ CORRIGIDO: div ao invés de form para evitar form aninhado */}
           {creatingCategory && (
-            <form onSubmit={handleCreateCategory} className="mt-3 flex items-center gap-2">
+            <div className="mt-3 flex items-center gap-2">
               <input
                 type="text"
                 value={newCategoryName}
                 onChange={(e) => setNewCategoryName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleCreateCategory(e as any);
+                  }
+                }}
                 placeholder="Nome da nova categoria"
                 className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm"
               />
               <button
-                type="submit"
+                type="button"
+                onClick={handleCreateCategory}
                 className="text-xs px-3 py-2 rounded-lg bg-accent text-white hover:bg-accent/90"
               >
                 Criar
               </button>
-            </form>
+            </div>
           )}
         </div>
         <div>
