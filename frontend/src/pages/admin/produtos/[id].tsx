@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import AdminLayout from "@/components/AdminLayout";
-import { apiGet, apiPut, apiPostForm } from "@/lib/api";
+import { apiGet, apiPost, apiPut, apiPostForm } from "@/lib/api";
 
 interface Category {
   id: string;
