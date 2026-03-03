@@ -42,8 +42,12 @@ export default function Checkout() {
     zipCode: "",
   });
   const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [processing, setProcessing] = useState(false);
+
+  // Guardar endereço validado para usar depois
+  const [validatedAddress, setValidatedAddress] = useState<any>(null);
 
   useEffect(() => {
     if (!authLoading && !user) router.replace("/login?redirect=/checkout");
@@ -80,40 +84,72 @@ export default function Checkout() {
     }
   }, [selectedAddressId, addresses]);
 
-  async function goToPayment() {
+  // Passo 1 → Passo 2: Validar endereço e ir para seleção de método
+  function goToMethodSelection() {
     setError("");
-    const addr = selectedAddressId ? shippingAddress : {
-      street: manualAddress.street,
-      number: manualAddress.number,
-      complement: manualAddress.complement || undefined,
-      district: manualAddress.district,
-      city: manualAddress.city,
-      state: manualAddress.state,
-      zipCode: manualAddress.zipCode,
-    };
+    const addr = selectedAddressId
+      ? shippingAddress
+      : {
+          street: manualAddress.street,
+          number: manualAddress.number,
+          complement: manualAddress.complement || undefined,
+          district: manualAddress.district,
+          city: manualAddress.city,
+          state: manualAddress.state,
+          zipCode: manualAddress.zipCode,
+        };
+
     if (selectedAddressId && !addr) {
       setError("Selecione um endereço.");
       return;
     }
-    if (!selectedAddressId && (!manualAddress.street || !manualAddress.number || !manualAddress.district || !manualAddress.city || !manualAddress.state || manualAddress.zipCode.length < 8)) {
+    if (
+      !selectedAddressId &&
+      (!manualAddress.street ||
+        !manualAddress.number ||
+        !manualAddress.district ||
+        !manualAddress.city ||
+        !manualAddress.state ||
+        manualAddress.zipCode.length < 8)
+    ) {
       setError("Preencha todos os campos do endereço.");
       return;
     }
+
+    // Salvar endereço validado e avançar
+    setValidatedAddress({
+      addr,
+      addressId: selectedAddressId || null,
+    });
+    setStep(2);
+  }
+
+  // Quando o usuário seleciona o método de pagamento → Criar PaymentIntent
+  async function handleMethodSelect(method: string) {
+    if (!validatedAddress) return;
+    setSelectedPaymentMethod(method);
+    setError("");
     setProcessing(true);
+    setClientSecret(null);
+
     try {
       const body: any = {
-        paymentMethod: "card",
+        paymentMethod: method, // "credit", "debit" ou "pix"
       };
-      if (selectedAddressId) body.addressId = selectedAddressId;
-      else body.shippingAddress = addr;
+      if (validatedAddress.addressId) {
+        body.addressId = validatedAddress.addressId;
+      } else {
+        body.shippingAddress = validatedAddress.addr;
+      }
+
       const res = await apiPost<{ clientSecret: string; orderId: string }>(
         "/api/checkout/create-payment-intent",
         body
       );
       setClientSecret(res.clientSecret);
-      setStep(2);
     } catch (e: any) {
       setError(e.message || "Erro ao criar pagamento");
+      setSelectedPaymentMethod(null);
     } finally {
       setProcessing(false);
     }
@@ -149,6 +185,36 @@ export default function Checkout() {
       <div className="max-w-2xl mx-auto px-4 py-8">
         <h1 className="text-2xl font-bold text-[#333333] mb-6">Checkout</h1>
 
+        {/* Indicador de passos */}
+        <div className="flex items-center gap-2 mb-8">
+          {[
+            { n: 1, label: "Endereço" },
+            { n: 2, label: "Pagamento" },
+            { n: 3, label: "Confirmação" },
+          ].map((s, i) => (
+            <div key={s.n} className="flex items-center gap-2">
+              <div
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                  step >= s.n
+                    ? "bg-[#308E10] text-white"
+                    : "bg-gray-200 text-gray-500"
+                }`}
+              >
+                {s.n}
+              </div>
+              <span
+                className={`text-sm ${
+                  step >= s.n ? "text-[#333333] font-medium" : "text-gray-400"
+                }`}
+              >
+                {s.label}
+              </span>
+              {i < 2 && <div className="w-8 h-px bg-gray-300" />}
+            </div>
+          ))}
+        </div>
+
+        {/* PASSO 1: Endereço */}
         {step === 1 && (
           <>
             <h2 className="font-semibold text-[#333333] mb-4">Endereço de entrega</h2>
@@ -188,7 +254,9 @@ export default function Checkout() {
                   <input
                     placeholder="Complemento"
                     value={manualAddress.complement}
-                    onChange={(e) => setManualAddress((a) => ({ ...a, complement: e.target.value }))}
+                    onChange={(e) =>
+                      setManualAddress((a) => ({ ...a, complement: e.target.value }))
+                    }
                     className="col-span-2 border border-gray-300 rounded-lg px-3 py-2"
                   />
                 </div>
@@ -208,14 +276,24 @@ export default function Checkout() {
                   <input
                     placeholder="UF"
                     value={manualAddress.state}
-                    onChange={(e) => setManualAddress((a) => ({ ...a, state: e.target.value.slice(0, 2).toUpperCase() }))}
+                    onChange={(e) =>
+                      setManualAddress((a) => ({
+                        ...a,
+                        state: e.target.value.slice(0, 2).toUpperCase(),
+                      }))
+                    }
                     className="border border-gray-300 rounded-lg px-3 py-2"
                     maxLength={2}
                   />
                   <input
                     placeholder="CEP"
                     value={manualAddress.zipCode}
-                    onChange={(e) => setManualAddress((a) => ({ ...a, zipCode: e.target.value.replace(/\D/g, "").slice(0, 8) }))}
+                    onChange={(e) =>
+                      setManualAddress((a) => ({
+                        ...a,
+                        zipCode: e.target.value.replace(/\D/g, "").slice(0, 8),
+                      }))
+                    }
                     className="border border-gray-300 rounded-lg px-3 py-2"
                   />
                 </div>
@@ -232,25 +310,38 @@ export default function Checkout() {
               </Link>
               <button
                 type="button"
-                onClick={goToPayment}
-                disabled={processing}
-                className="btn-accent py-2 px-4 disabled:opacity-50"
+                onClick={goToMethodSelection}
+                className="btn-accent py-2 px-4"
               >
-                {processing ? "Processando…" : "Ir para pagamento"}
+                Ir para pagamento
               </button>
             </div>
           </>
         )}
 
-        {step === 2 && clientSecret && (
-          <CheckoutPayment
-            clientSecret={clientSecret}
-            total={total}
-            onSuccess={onPaymentSuccess}
-            onBack={() => setStep(1)}
-          />
+        {/* PASSO 2: Selecionar método + Pagar */}
+        {step === 2 && (
+          <>
+            {error && (
+              <p className="text-red-600 text-sm mb-4 bg-red-50 p-3 rounded" role="alert">
+                {error}
+              </p>
+            )}
+            <CheckoutPayment
+              clientSecret={clientSecret}
+              total={total}
+              onSuccess={onPaymentSuccess}
+              onBack={() => {
+                setStep(1);
+                setClientSecret(null);
+                setSelectedPaymentMethod(null);
+              }}
+              onMethodSelect={handleMethodSelect}
+            />
+          </>
         )}
 
+        {/* PASSO 3: Confirmação */}
         {step === 3 && (
           <div className="bg-green-50 border border-green-200 rounded-xl p-6 text-center">
             <h2 className="text-xl font-bold text-[#333333] mb-2">Pedido realizado!</h2>
@@ -267,10 +358,12 @@ export default function Checkout() {
           </div>
         )}
 
+        {/* Resumo */}
         <div className="mt-8 p-4 bg-gray-50 rounded-lg">
           <p className="font-medium text-[#333333]">Resumo</p>
           <p className="text-[#333333]">
-            {items.length} item(ns) — <span className="font-bold text-accent">{formatPrice(total)}</span>
+            {items.length} item(ns) —{" "}
+            <span className="font-bold text-accent">{formatPrice(total)}</span>
           </p>
         </div>
       </div>

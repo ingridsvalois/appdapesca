@@ -64,11 +64,34 @@ export async function createOrderFromCart(
   if (!stripe) {
     throw new Error("Stripe não configurado");
   }
+
+  // Definir métodos de pagamento baseado na seleção do usuário
+  const isPix = paymentMethod === "pix";
+  const paymentMethodTypes = isPix ? ["pix"] : ["card"];
+
   const paymentIntent = await stripe.paymentIntents.create({
     amount: Math.round(totalAmount * 100),
     currency: "brl",
-    metadata: { orderId: order.id },
-    automatic_payment_methods: { enabled: true },
+    metadata: {
+      orderId: order.id,
+      paymentMethod: paymentMethod, // credit, debit ou pix
+    },
+    payment_method_types: paymentMethodTypes,
+    ...(isPix
+      ? {
+          payment_method_options: {
+            pix: {
+              expires_after_seconds: 1800, // PIX expira em 30 min
+            },
+          },
+        }
+      : {
+          payment_method_options: {
+            card: {
+              request_three_d_secure: "automatic",
+            },
+          },
+        }),
   });
 
   await prisma.order.update({
