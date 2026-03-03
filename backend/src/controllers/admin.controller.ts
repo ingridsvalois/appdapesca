@@ -4,6 +4,9 @@ import type { CreateProductBody, UpdateProductBody } from "../validations/produc
 import type { CreateCategoryBody as CreateCatBody, UpdateCategoryBody as UpdateCatBody } from "../validations/category.validations";
 import { Decimal } from "@prisma/client/runtime/library";
 import { uploadToCloudinary } from "../services/upload.service";
+import { OrderStatus } from "@prisma/client";
+
+
 
 function slugify(str: string): string {
   return str
@@ -189,13 +192,13 @@ export async function listOrders(req: Request, res: Response): Promise<void> {
     where.paymentStatus = { in: ["pending", "failed"] };
   } else if (segment === "processing") {
     where.paymentStatus = "paid";
-    where.status = "PAID";
+    where.status = OrderStatus.PAID;
   } else if (segment === "shipped") {
-    where.status = "SHIPPED";
+    where.status = OrderStatus.SHIPPED;
   } else if (segment === "delivered") {
-    where.status = "DELIVERED";
+    where.status = OrderStatus.DELIVERED;
   } else if (segment === "cancelled") {
-    where.status = "CANCELLED";
+    where.status = OrderStatus.CANCELLED;
   }
   const [data, total] = await Promise.all([
     prisma.order.findMany({
@@ -249,7 +252,7 @@ export async function updateOrderStatus(req: Request, res: Response): Promise<vo
   }
 
   if (status === "SHIPPED") {
-    if (order.paymentStatus !== "paid" || order.status !== "PAID") {
+    if (order.paymentStatus !== "paid" || order.status !== OrderStatus.PAID) {
       res.status(400).json({ message: "Pedido precisa estar pago para ser enviado" });
       return;
     }
@@ -262,7 +265,7 @@ export async function updateOrderStatus(req: Request, res: Response): Promise<vo
   const updated = await prisma.order.update({
     where: { id },
     data: {
-      status,
+      status: status as OrderStatus,
       trackingCode: status === "SHIPPED" ? trackingCode : order.trackingCode,
       carrier: status === "SHIPPED" ? carrier : order.carrier,
     },
