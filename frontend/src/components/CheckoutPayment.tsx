@@ -35,12 +35,13 @@ function MethodSelector({
       icon: "💳",
       desc: "Cartão de débito",
     },
-    {
-      id: "pix" as const,
-      label: "PIX",
-      icon: "📱",
-      desc: "Pagamento instantâneo",
-    },
+    // PIX desabilitado até ativar no Stripe Dashboard
+    // {
+    //   id: "pix" as const,
+    //   label: "PIX",
+    //   icon: "📱",
+    //   desc: "Pagamento instantâneo",
+    // },
   ];
 
   return (

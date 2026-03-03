@@ -13,7 +13,7 @@ export const shippingAddressSchema = z.object({
 export const createPaymentIntentSchema = z.object({
   addressId: z.string().optional(),
   shippingAddress: shippingAddressSchema.optional(),
-  paymentMethod: z.enum(["card", "pix"]).default("card"),
+  paymentMethod: z.enum(["card", "credit", "debit", "pix"]).default("card"),
 }).refine(
   (data) => data.addressId || data.shippingAddress,
   { message: "Informe addressId ou shippingAddress" }
