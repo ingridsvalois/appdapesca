@@ -1,9 +1,9 @@
 import { Router } from "express";
 import rateLimit from "express-rate-limit";
 import { auth } from "../middlewares/auth.middleware";
-import { requireAuth } from "../middlewares/auth.middleware";
+import { requireAuth } from "../middlewares.auth.middleware";
 import { validateBody } from "../middlewares/validate.middleware";
-import { registerSchema, loginSchema } from "../validations/auth.validations";
+import { registerSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema } from "../validations/auth.validations";
 import * as authController from "../controllers/auth.controller";
 
 export const router = Router();
@@ -31,3 +31,17 @@ router.post(
 router.post("/refresh", authController.refresh);
 
 router.post("/logout", auth, authController.logout);
+
+router.post(
+  "/forgot-password",
+  validateBody(forgotPasswordSchema),
+  authController.forgotPassword
+);
+
+router.post(
+  "/reset-password",
+  validateBody(resetPasswordSchema),
+  authController.resetPassword
+);
+
+router.get("/reset-password/validate", authController.validateResetToken);

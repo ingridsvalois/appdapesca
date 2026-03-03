@@ -117,7 +117,11 @@ export async function handlePaymentSucceeded(paymentIntentId: string): Promise<v
   await prisma.$transaction(async (tx) => {
     await tx.order.update({
       where: { id: order.id },
-      data: { status: OrderStatus.PAID, paymentStatus: "paid" },
+      data: {
+        status: OrderStatus.PAID,
+        paymentStatus: "paid",
+        paidAt: new Date(),
+      },
     });
     for (const item of order.items) {
       await tx.product.update({

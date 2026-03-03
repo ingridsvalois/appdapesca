@@ -13,3 +13,18 @@ export const loginSchema = z.object({
 
 export type RegisterBody = z.infer<typeof registerSchema>;
 export type LoginBody = z.infer<typeof loginSchema>;
+
+export const forgotPasswordSchema = z.object({
+  email: z.string().email("E-mail inválido"),
+});
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(10),
+  password: z
+    .string()
+    .min(8, "Senha deve ter pelo menos 8 caracteres")
+    .max(120, "Senha muito longa"),
+});
+
+export type ForgotPasswordBody = z.infer<typeof forgotPasswordSchema>;
+export type ResetPasswordBody = z.infer<typeof resetPasswordSchema>;

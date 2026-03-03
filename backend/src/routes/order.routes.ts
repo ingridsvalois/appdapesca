@@ -9,3 +9,4 @@ router.use(requireAuth);
 
 router.get("/", orderController.listMyOrders);
 router.get("/:id", orderController.getOrder);
+router.patch("/:id/confirm-delivery", orderController.confirmDelivery);

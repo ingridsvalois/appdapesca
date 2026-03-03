@@ -41,6 +41,10 @@ export default function Checkout() {
     state: "",
     zipCode: "",
   });
+  const [ufLoading, setUfLoading] = useState(false);
+  const [cityLoading, setCityLoading] = useState(false);
+  const [cities, setCities] = useState<string[]>([]);
+  const [cepLoading, setCepLoading] = useState(false);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -48,6 +52,86 @@ export default function Checkout() {
 
   // Guardar endereço validado para usar depois
   const [validatedAddress, setValidatedAddress] = useState<any>(null);
+
+  const estados = [
+    { sigla: "AC", nome: "Acre" },
+    { sigla: "AL", nome: "Alagoas" },
+    { sigla: "AP", nome: "Amapá" },
+    { sigla: "AM", nome: "Amazonas" },
+    { sigla: "BA", nome: "Bahia" },
+    { sigla: "CE", nome: "Ceará" },
+    { sigla: "DF", nome: "Distrito Federal" },
+    { sigla: "ES", nome: "Espírito Santo" },
+    { sigla: "GO", nome: "Goiás" },
+    { sigla: "MA", nome: "Maranhão" },
+    { sigla: "MT", nome: "Mato Grosso" },
+    { sigla: "MS", nome: "Mato Grosso do Sul" },
+    { sigla: "MG", nome: "Minas Gerais" },
+    { sigla: "PA", nome: "Pará" },
+    { sigla: "PB", nome: "Paraíba" },
+    { sigla: "PR", nome: "Paraná" },
+    { sigla: "PE", nome: "Pernambuco" },
+    { sigla: "PI", nome: "Piauí" },
+    { sigla: "RJ", nome: "Rio de Janeiro" },
+    { sigla: "RN", nome: "Rio Grande do Norte" },
+    { sigla: "RS", nome: "Rio Grande do Sul" },
+    { sigla: "RO", nome: "Rondônia" },
+    { sigla: "RR", nome: "Roraima" },
+    { sigla: "SC", nome: "Santa Catarina" },
+    { sigla: "SP", nome: "São Paulo" },
+    { sigla: "SE", nome: "Sergipe" },
+    { sigla: "TO", nome: "Tocantins" },
+  ];
+
+  async function loadCities(uf: string) {
+    if (!uf) {
+      setCities([]);
+      return;
+    }
+    try {
+      setCityLoading(true);
+      const res = await fetch(
+        `https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios`
+      );
+      const data = await res.json();
+      const names = (data as any[])
+        .map((c) => c.nome as string)
+        .sort((a, b) => a.localeCompare(b));
+      setCities(names);
+    } catch {
+      setCities([]);
+    } finally {
+      setCityLoading(false);
+    }
+  }
+
+  async function handleCepLookup(value: string) {
+    const numeric = value.replace(/\D/g, "");
+    if (numeric.length !== 8) return;
+    try {
+      setCepLoading(true);
+      const res = await fetch(`https://viacep.com.br/ws/${numeric}/json/`);
+      const data = await res.json();
+      if (data.erro) {
+        setError("CEP não encontrado. Por favor, preencha o endereço manualmente.");
+        return;
+      }
+      const uf = (data.uf || "").toUpperCase();
+      setManualAddress((a) => ({
+        ...a,
+        street: data.logradouro || a.street,
+        district: data.bairro || a.district,
+        city: data.localidade || a.city,
+        state: uf || a.state,
+        zipCode: numeric,
+      }));
+      await loadCities(uf);
+    } catch {
+      setError("Não foi possível buscar o CEP. Preencha o endereço manualmente.");
+    } finally {
+      setCepLoading(false);
+    }
+  }
 
   useEffect(() => {
     if (!authLoading && !user) router.replace("/login?redirect=/checkout");
@@ -103,17 +187,18 @@ export default function Checkout() {
       setError("Selecione um endereço.");
       return;
     }
-    if (
-      !selectedAddressId &&
-      (!manualAddress.street ||
+    if (!selectedAddressId) {
+      if (
+        !manualAddress.street ||
         !manualAddress.number ||
         !manualAddress.district ||
         !manualAddress.city ||
         !manualAddress.state ||
-        manualAddress.zipCode.length < 8)
-    ) {
-      setError("Preencha todos os campos do endereço.");
-      return;
+        manualAddress.zipCode.replace(/\D/g, "").length < 8
+      ) {
+        setError("Preencha todos os campos do endereço.");
+        return;
+      }
     }
 
     // Salvar endereço validado e avançar
@@ -238,8 +323,23 @@ export default function Checkout() {
             {(!selectedAddressId || addresses.length === 0) && (
               <div className="space-y-2 mb-4">
                 <p className="text-sm text-gray-600">Endereço de entrega</p>
+                <div className="flex items-center gap-2">
+                  <input
+                    placeholder="CEP"
+                    value={manualAddress.zipCode}
+                    onChange={(e) => {
+                      const numeric = e.target.value.replace(/\D/g, "").slice(0, 8);
+                      setManualAddress((a) => ({ ...a, zipCode: numeric }));
+                    }}
+                    onBlur={(e) => handleCepLookup(e.target.value)}
+                    className="flex-1 border border-gray-300 rounded-lg px-3 py-2"
+                  />
+                  {cepLoading && (
+                    <span className="text-xs text-gray-500">Buscando CEP…</span>
+                  )}
+                </div>
                 <input
-                  placeholder="Rua"
+                  placeholder="Rua / Logradouro"
                   value={manualAddress.street}
                   onChange={(e) => setManualAddress((a) => ({ ...a, street: e.target.value }))}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2"
@@ -252,7 +352,7 @@ export default function Checkout() {
                     className="border border-gray-300 rounded-lg px-3 py-2"
                   />
                   <input
-                    placeholder="Complemento"
+                    placeholder="Complemento (opcional)"
                     value={manualAddress.complement}
                     onChange={(e) =>
                       setManualAddress((a) => ({ ...a, complement: e.target.value }))
@@ -267,35 +367,47 @@ export default function Checkout() {
                   className="w-full border border-gray-300 rounded-lg px-3 py-2"
                 />
                 <div className="grid grid-cols-3 gap-2">
-                  <input
-                    placeholder="Cidade"
-                    value={manualAddress.city}
-                    onChange={(e) => setManualAddress((a) => ({ ...a, city: e.target.value }))}
-                    className="border border-gray-300 rounded-lg px-3 py-2"
-                  />
-                  <input
-                    placeholder="UF"
-                    value={manualAddress.state}
-                    onChange={(e) =>
-                      setManualAddress((a) => ({
-                        ...a,
-                        state: e.target.value.slice(0, 2).toUpperCase(),
-                      }))
-                    }
-                    className="border border-gray-300 rounded-lg px-3 py-2"
-                    maxLength={2}
-                  />
-                  <input
-                    placeholder="CEP"
-                    value={manualAddress.zipCode}
-                    onChange={(e) =>
-                      setManualAddress((a) => ({
-                        ...a,
-                        zipCode: e.target.value.replace(/\D/g, "").slice(0, 8),
-                      }))
-                    }
-                    className="border border-gray-300 rounded-lg px-3 py-2"
-                  />
+                  <div className="col-span-1">
+                    <select
+                      value={manualAddress.state}
+                      onChange={async (e) => {
+                        const uf = e.target.value;
+                        setManualAddress((a) => ({ ...a, state: uf, city: "" }));
+                        await loadCities(uf);
+                      }}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                    >
+                      <option value="">Estado (UF)</option>
+                      {estados.map((uf) => (
+                        <option key={uf.sigla} value={uf.sigla}>
+                          {uf.nome}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="col-span-2">
+                    <select
+                      value={manualAddress.city}
+                      onChange={(e) =>
+                        setManualAddress((a) => ({ ...a, city: e.target.value }))
+                      }
+                      disabled={!manualAddress.state || cityLoading}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                    >
+                      <option value="">
+                        {cityLoading
+                          ? "Carregando cidades..."
+                          : manualAddress.state
+                            ? "Selecione a cidade"
+                            : "Selecione o estado primeiro"}
+                      </option>
+                      {cities.map((city) => (
+                        <option key={city} value={city}>
+                          {city}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </div>
             )}

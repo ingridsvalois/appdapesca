@@ -180,11 +180,23 @@ export async function uploadImages(req: Request, res: Response): Promise<void> {
 }
 
 export async function listOrders(req: Request, res: Response): Promise<void> {
-  const status = req.query.status as string | undefined;
+  const segment = (req.query.segment as string | undefined) || "";
   const page = Math.max(1, Number(req.query.page) || 1);
   const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 20));
   const where: any = {};
-  if (status) where.status = status;
+
+  if (segment === "unpaid") {
+    where.paymentStatus = { in: ["pending", "failed"] };
+  } else if (segment === "processing") {
+    where.paymentStatus = "paid";
+    where.status = "PAID";
+  } else if (segment === "shipped") {
+    where.status = "SHIPPED";
+  } else if (segment === "delivered") {
+    where.status = "DELIVERED";
+  } else if (segment === "cancelled") {
+    where.status = "CANCELLED";
+  }
   const [data, total] = await Promise.all([
     prisma.order.findMany({
       where,
@@ -219,15 +231,42 @@ export async function getOrder(req: Request, res: Response): Promise<void> {
 
 export async function updateOrderStatus(req: Request, res: Response): Promise<void> {
   const id = req.params.id as string;
-  const { status } = req.body;
-  if (!["PENDING", "PAID", "CANCELLED", "SHIPPED"].includes(status)) {
-    res.status(400).json({ message: "Status inválido" });
+  const { status, trackingCode, carrier } = req.body as {
+    status?: string;
+    trackingCode?: string;
+    carrier?: string;
+  };
+
+  if (!status || !["CANCELLED", "SHIPPED"].includes(status)) {
+    res.status(400).json({ message: "Status inválido para atualização manual" });
     return;
   }
-  const order = await prisma.order.update({
+
+  const order = await prisma.order.findUnique({ where: { id } });
+  if (!order) {
+    res.status(404).json({ message: "Pedido não encontrado" });
+    return;
+  }
+
+  if (status === "SHIPPED") {
+    if (order.paymentStatus !== "paid" || order.status !== "PAID") {
+      res.status(400).json({ message: "Pedido precisa estar pago para ser enviado" });
+      return;
+    }
+    if (!trackingCode || !carrier) {
+      res.status(400).json({ message: "Código de rastreio e transportadora são obrigatórios" });
+      return;
+    }
+  }
+
+  const updated = await prisma.order.update({
     where: { id },
-    data: { status, paymentStatus: status === "PAID" ? "paid" : undefined },
+    data: {
+      status,
+      trackingCode: status === "SHIPPED" ? trackingCode : order.trackingCode,
+      carrier: status === "SHIPPED" ? carrier : order.carrier,
+    },
     include: { user: { select: { id: true, name: true, email: true } }, items: true },
   });
-  res.json(order);
+  res.json(updated);
 }

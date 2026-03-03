@@ -4,8 +4,10 @@ import { env } from "../config/env";
 import { hashPassword, verifyPassword } from "../utils/hash";
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../utils/jwt";
 import { revokeRefreshToken, isRevoked } from "../utils/refreshBlacklist";
-import type { RegisterBody, LoginBody } from "../validations/auth.validations";
+import type { RegisterBody, LoginBody, ForgotPasswordBody, ResetPasswordBody } from "../validations/auth.validations";
 import { UserRole } from "@prisma/client";
+import crypto from "crypto";
+import { sendEmail } from "../services/email.service";
 
 const COOKIE_ACCESS = "access_token";
 const COOKIE_REFRESH = "refresh_token";
@@ -107,4 +109,92 @@ export async function logout(req: Request, res: Response): Promise<void> {
   res.clearCookie(COOKIE_ACCESS);
   res.clearCookie(COOKIE_REFRESH);
   res.json({ message: "Logout realizado" });
+}
+
+export async function forgotPassword(req: Request, res: Response): Promise<void> {
+  const body = (req as any).validBody as ForgotPasswordBody;
+  const user = await prisma.user.findUnique({ where: { email: body.email } });
+
+  if (user) {
+    const token = crypto.randomBytes(32).toString("hex");
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1h
+
+    await prisma.passwordResetToken.create({
+      data: {
+        userId: user.id,
+        token,
+        expiresAt,
+      },
+    });
+
+    const resetUrl = `${env.frontendUrl.replace(/\/$/, "")}/reset-password?token=${token}`;
+
+    await sendEmail({
+      to: user.email,
+      subject: "Recuperação de senha - App da Pesca",
+      html: `
+        <p>Olá, ${user.name}!</p>
+        <p>Recebemos uma solicitação para redefinir a sua senha.</p>
+        <p>Clique no botão abaixo para criar uma nova senha. Este link é válido por 1 hora.</p>
+        <p>
+          <a href="${resetUrl}" style="display:inline-block;padding:10px 16px;background-color:#308E10;color:#ffffff;text-decoration:none;border-radius:4px;">
+            Redefinir senha
+          </a>
+        </p>
+        <p>Se você não solicitou esta recuperação, pode ignorar este e-mail.</p>
+      `,
+    });
+  }
+
+  res.json({
+    message:
+      "Se este e-mail estiver cadastrado, você receberá um link de recuperação em breve. Verifique também sua caixa de spam.",
+  });
+}
+
+export async function validateResetToken(req: Request, res: Response): Promise<void> {
+  const token = (req.query.token as string) || "";
+  if (!token) {
+    res.status(400).json({ valid: false, message: "Token não informado" });
+    return;
+  }
+
+  const record = await prisma.passwordResetToken.findUnique({ where: { token } });
+  if (!record || record.expiresAt < new Date()) {
+    res.status(400).json({ valid: false, message: "Token inválido ou expirado" });
+    return;
+  }
+
+  res.json({ valid: true });
+}
+
+export async function resetPassword(req: Request, res: Response): Promise<void> {
+  const body = (req as any).validBody as ResetPasswordBody;
+
+  const record = await prisma.passwordResetToken.findUnique({
+    where: { token: body.token },
+    include: { user: true },
+  });
+
+  if (!record || record.expiresAt < new Date()) {
+    res.status(400).json({ message: "Token inválido ou expirado" });
+    return;
+  }
+
+  const passwordHash = await hashPassword(body.password);
+
+  await prisma.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: record.userId },
+      data: { passwordHash },
+    });
+    await tx.passwordResetToken.delete({
+      where: { id: record.id },
+    });
+  });
+
+  res.clearCookie(COOKIE_ACCESS);
+  res.clearCookie(COOKIE_REFRESH);
+
+  res.json({ message: "Senha alterada com sucesso." });
 }

@@ -7,6 +7,7 @@ interface OrderItem {
   id: string;
   orderId: string;
   status: string;
+  paymentStatus?: string;
   totalAmount: number | string;
   createdAt: string;
   user?: { name: string; email: string };
@@ -19,13 +20,22 @@ export default function AdminPedidos() {
     page: number;
     totalPages: number;
   }>({ data: [], total: 0, page: 1, totalPages: 0 });
-  const [status, setStatus] = useState("");
+  const [segment, setSegment] = useState<"unpaid" | "processing" | "shipped" | "delivered" | "cancelled">(
+    "processing"
+  );
+  const [counts, setCounts] = useState<Record<string, number>>({
+    unpaid: 0,
+    processing: 0,
+    shipped: 0,
+    delivered: 0,
+    cancelled: 0,
+  });
   const [loading, setLoading] = useState(true);
 
   function load(page = 1) {
     setLoading(true);
     const params = new URLSearchParams({ page: String(page), limit: "20" });
-    if (status) params.set("status", status);
+    params.set("segment", segment);
     apiGet<{ data: OrderItem[]; total: number; page: number; totalPages: number }>(
       `/api/admin/orders?${params}`
     )
@@ -34,9 +44,33 @@ export default function AdminPedidos() {
       .finally(() => setLoading(false));
   }
 
+  function loadCounts() {
+    const segments: Array<keyof typeof counts> = [
+      "unpaid",
+      "processing",
+      "shipped",
+      "delivered",
+      "cancelled",
+    ];
+    Promise.all(
+      segments.map((seg) =>
+        apiGet<{ total: number }>(`/api/admin/orders?segment=${seg}&page=1&limit=1`)
+          .then((res) => ({ seg, total: res.total }))
+          .catch(() => ({ seg, total: 0 }))
+      )
+    ).then((values) => {
+      const next: Record<string, number> = { ...counts };
+      for (const v of values) {
+        next[v.seg] = v.total;
+      }
+      setCounts(next);
+    });
+  }
+
   useEffect(() => {
     load(1);
-  }, [status]);
+    loadCounts();
+  }, [segment]);
 
   function formatPrice(v: number | string): string {
     return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(v));
@@ -45,21 +79,42 @@ export default function AdminPedidos() {
   return (
     <AdminLayout title="Pedidos — Admin">
       <h1 className="text-2xl font-bold text-[#333333] mb-6">Pedidos</h1>
-      <div className="flex flex-wrap gap-4 mb-6">
-        <label className="flex items-center gap-2">
-          <span className="text-sm text-[#333333]">Status:</span>
-          <select
-            value={status}
-            onChange={(e) => setStatus(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-2"
-          >
-            <option value="">Todos</option>
-            <option value="PENDING">Pendente</option>
-            <option value="PAID">Pago</option>
-            <option value="CANCELLED">Cancelado</option>
-            <option value="SHIPPED">Enviado</option>
-          </select>
-        </label>
+      <div className="flex flex-wrap gap-2 mb-6">
+        {[
+          { key: "unpaid", label: "Não pagos" },
+          { key: "processing", label: "Pagos / Em preparação" },
+          { key: "shipped", label: "Enviados" },
+          { key: "delivered", label: "Entregues" },
+          { key: "cancelled", label: "Cancelados" },
+        ].map((tab) => {
+          const isActive = segment === tab.key;
+          const count = counts[tab.key] || 0;
+          const highlightProcessing =
+            tab.key === "processing" && count > 0;
+          return (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => setSegment(tab.key as any)}
+              className={`px-3 py-2 rounded-full text-xs font-medium border transition-colors flex items-center gap-2 ${
+                isActive
+                  ? "bg-[#308E10] text-white border-[#308E10]"
+                  : "bg-white text-[#333333] border-gray-300 hover:bg-gray-50"
+              }`}
+            >
+              <span>{tab.label}</span>
+              <span
+                className={`px-2 py-0.5 rounded-full text-[10px] ${
+                  highlightProcessing
+                    ? "bg-red-600 text-white"
+                    : "bg-gray-200 text-gray-700"
+                }`}
+              >
+                {count}
+              </span>
+            </button>
+          );
+        })}
       </div>
       {loading ? (
         <p className="text-gray-500">Carregando…</p>
@@ -95,16 +150,28 @@ export default function AdminPedidos() {
                       {new Date(order.createdAt).toLocaleDateString("pt-BR")}
                     </td>
                     <td className="px-4 py-3">
-                      <span
-                        className={`text-sm ${
-                          order.status === "PAID"
-                            ? "text-accent"
-                            : order.status === "CANCELLED"
-                              ? "text-red-600"
-                              : "text-gray-600"
-                        }`}
-                      >
-                        {order.status}
+                      <span className="text-xs inline-flex items-center px-2.5 py-0.5 rounded-full font-medium
+                        ${
+                          order.paymentStatus !== "paid"
+                            ? "bg-yellow-100 text-yellow-800"
+                            : order.status === "SHIPPED"
+                              ? "bg-orange-100 text-orange-800"
+                              : order.status === "DELIVERED"
+                                ? "bg-green-100 text-green-800"
+                                : order.status === "CANCELLED"
+                                  ? "bg-red-100 text-red-800"
+                                  : "bg-blue-100 text-blue-800"
+                        }
+                      ">
+                        {order.paymentStatus !== "paid"
+                          ? "Aguardando pagamento"
+                          : order.status === "SHIPPED"
+                            ? "Enviado"
+                            : order.status === "DELIVERED"
+                              ? "Entregue"
+                              : order.status === "CANCELLED"
+                                ? "Cancelado"
+                                : "Pago / Em preparação"}
                       </span>
                     </td>
                     <td className="px-4 py-3 font-medium text-accent">
