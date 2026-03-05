@@ -9,7 +9,7 @@ interface OrderItem {
   id: string;
   quantity: number;
   unitPrice: number | string;
-  product: { name: string; slug: string };
+  product?: { name: string; slug: string } | null;
 }
 
 interface Order {
@@ -66,27 +66,27 @@ export default function Pedidos() {
 
   function renderStatusBadge(order: Order) {
     let label = "";
-    let className = "";
+    let badgeClass = "";
 
     if (order.paymentStatus !== "paid") {
       label = "Aguardando pagamento";
-      className = "bg-yellow-100 text-yellow-800";
+      badgeClass = "bg-yellow-100 text-yellow-800";
     } else if (order.status === "SHIPPED") {
       label = "Enviado";
-      className = "bg-orange-100 text-orange-800";
+      badgeClass = "bg-orange-100 text-orange-800";
     } else if (order.status === "DELIVERED") {
       label = "Entregue";
-      className = "bg-green-100 text-green-800";
+      badgeClass = "bg-green-100 text-green-800";
     } else if (order.status === "CANCELLED") {
       label = "Cancelado";
-      className = "bg-red-100 text-red-800";
+      badgeClass = "bg-red-100 text-red-800";
     } else {
       label = "Pago / Em preparação";
-      className = "bg-blue-100 text-blue-800";
+      badgeClass = "bg-blue-100 text-blue-800";
     }
 
     return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${className}`}>
+      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badgeClass}`}>
         {label}
       </span>
     );

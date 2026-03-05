@@ -8,7 +8,7 @@ interface OrderItem {
   productId: string;
   quantity: number;
   unitPrice: number | string;
-  product: { name: string; slug: string };
+  product?: { name: string; slug: string } | null;
 }
 
 interface Order {
@@ -20,7 +20,7 @@ interface Order {
   shippingAddressSnapshot: Record<string, string>;
   trackingCode?: string | null;
   carrier?: string | null;
-  user?: { name: string; email: string };
+  user?: { name: string; email: string } | null;
   items: OrderItem[];
 }
 
@@ -107,23 +107,27 @@ export default function AdminPedidoDetalhe() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <h2 className="font-semibold text-[#333333] mb-4">Cliente</h2>
-          {order.user && (
+          {order.user ? (
             <p className="text-[#333333]">
               {order.user.name}
               <br />
               <span className="text-gray-500">{order.user.email}</span>
             </p>
+          ) : (
+            <p className="text-gray-500">Cliente não disponível</p>
           )}
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <h2 className="font-semibold text-[#333333] mb-4">Endereço de entrega</h2>
-          {addr && (
+          {addr ? (
             <p className="text-[#333333] text-sm">
               {addr.street}, {addr.number}
               {addr.complement ? `, ${addr.complement}` : ""}
               <br />
               {addr.district}, {addr.city} - {addr.state}, {addr.zipCode}
             </p>
+          ) : (
+            <p className="text-gray-500 text-sm">Endereço não disponível</p>
           )}
         </div>
       </div>
@@ -132,10 +136,10 @@ export default function AdminPedidoDetalhe() {
           Itens
         </h2>
         <ul className="divide-y divide-gray-200">
-          {order.items.map((item) => (
-            <li key={item.productId} className="px-6 py-4 flex justify-between items-center">
+          {order.items.map((item, index) => (
+            <li key={item.productId || index} className="px-6 py-4 flex justify-between items-center">
               <span className="text-[#333333]">
-                {item.product.name} × {item.quantity}
+                {item.product?.name ?? "Produto removido"} × {item.quantity}
               </span>
               <span className="text-accent font-medium">
                 {formatPrice(Number(item.unitPrice) * item.quantity)}

@@ -9,7 +9,7 @@ interface OrderItem {
   id: string;
   quantity: number;
   unitPrice: number | string;
-  product: { name: string; slug: string; mainImageUrl?: string };
+  product?: { name: string; slug: string; mainImageUrl?: string } | null;
 }
 
 interface Order {
@@ -72,27 +72,27 @@ export default function PedidoDetalheCliente() {
   function renderStatusBadge() {
     if (!order) return null;
     let label = "";
-    let className = "";
+    let badgeClass = "";
 
     if (order.paymentStatus !== "paid") {
       label = "Aguardando pagamento";
-      className = "bg-yellow-100 text-yellow-800";
+      badgeClass = "bg-yellow-100 text-yellow-800";
     } else if (order.status === "SHIPPED") {
       label = "Enviado";
-      className = "bg-orange-100 text-orange-800";
+      badgeClass = "bg-orange-100 text-orange-800";
     } else if (order.status === "DELIVERED") {
       label = "Entregue";
-      className = "bg-green-100 text-green-800";
+      badgeClass = "bg-green-100 text-green-800";
     } else if (order.status === "CANCELLED") {
       label = "Cancelado";
-      className = "bg-red-100 text-red-800";
+      badgeClass = "bg-red-100 text-red-800";
     } else {
       label = "Pago / Em preparação";
-      className = "bg-blue-100 text-blue-800";
+      badgeClass = "bg-blue-100 text-blue-800";
     }
 
     return (
-      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${className}`}>
+      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${badgeClass}`}>
         {label}
       </span>
     );
@@ -160,13 +160,15 @@ export default function PedidoDetalheCliente() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <div className="bg-white rounded-xl border border-gray-200 p-5">
             <h2 className="font-semibold text-[#333333] mb-3 text-sm">Endereço de entrega</h2>
-            {addr && (
+            {addr ? (
               <p className="text-sm text-[#333333]">
                 {addr.street}, {addr.number}
                 {addr.complement ? `, ${addr.complement}` : ""}
                 <br />
                 {addr.district}, {addr.city} - {addr.state}, {addr.zipCode}
               </p>
+            ) : (
+              <p className="text-sm text-gray-500">Endereço não disponível</p>
             )}
           </div>
           <div className="bg-white rounded-xl border border-gray-200 p-5">
@@ -196,10 +198,10 @@ export default function PedidoDetalheCliente() {
             Itens do pedido
           </h2>
           <ul className="divide-y divide-gray-200">
-            {order.items.map((item) => (
-              <li key={item.id} className="px-5 py-4 flex justify-between items-center">
+            {order.items.map((item, index) => (
+              <li key={item.id || index} className="px-5 py-4 flex justify-between items-center">
                 <span className="text-sm text-[#333333]">
-                  {item.product.name} × {item.quantity}
+                  {item.product?.name ?? "Produto removido"} × {item.quantity}
                 </span>
                 <span className="text-sm text-accent font-medium">
                   {formatPrice(Number(item.unitPrice) * item.quantity)}
@@ -259,4 +261,3 @@ export default function PedidoDetalheCliente() {
     </Layout>
   );
 }
-

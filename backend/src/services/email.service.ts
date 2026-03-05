@@ -16,15 +16,27 @@ export interface SendEmailOptions {
 
 export async function sendEmail(options: SendEmailOptions): Promise<void> {
   if (!env.smtpHost || !env.smtpFrom) {
-    console.warn("[email] SMTP não configurado. E-mail não será enviado.");
+    console.warn(
+      "[EMAIL] SMTP não configurado. Defina SMTP_HOST, SMTP_FROM (ou EMAIL_FROM) no .env. E-mail não será enviado."
+    );
     return;
   }
 
-  await transporter.sendMail({
-    from: env.smtpFrom,
-    to: options.to,
-    subject: options.subject,
-    html: options.html,
-  });
+  try {
+    const result = await transporter.sendMail({
+      from: env.smtpFrom,
+      to: options.to,
+      subject: options.subject,
+      html: options.html,
+    });
+    console.log("[EMAIL] E-mail enviado com sucesso:", result.messageId, "para:", options.to);
+  } catch (error) {
+    // NÃO relançar o erro (segurança: não revelar falhas ao usuário)
+    console.error("[EMAIL] Falha ao enviar e-mail:", {
+      to: options.to,
+      subject: options.subject,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
 }
 

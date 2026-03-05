@@ -20,7 +20,7 @@ export const env = {
   smtpSecure: process.env.SMTP_SECURE === "true",
   smtpUser: process.env.SMTP_USER || "",
   smtpPass: process.env.SMTP_PASS || "",
-  smtpFrom: process.env.SMTP_FROM || "",
+  smtpFrom: process.env.SMTP_FROM || process.env.EMAIL_FROM || "",
 };
 
 if (!env.databaseUrl) {

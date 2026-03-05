@@ -111,10 +111,17 @@ export async function handlePaymentSucceeded(paymentIntentId: string): Promise<v
     where: { stripePaymentIntentId: paymentIntentId },
     include: { items: true },
   });
-  if (!order) return;
-  if (order.status === OrderStatus.PAID) return;
+  if (!order) {
+    console.warn("[webhook] Pedido não encontrado para paymentIntent:", paymentIntentId);
+    return;
+  }
+  if (order.status === OrderStatus.PAID) {
+    console.log("[webhook] Pedido já pago, ignorando:", order.id);
+    return;
+  }
 
   await prisma.$transaction(async (tx) => {
+    // 1. Atualizar status do pedido
     await tx.order.update({
       where: { id: order.id },
       data: {
@@ -123,12 +130,35 @@ export async function handlePaymentSucceeded(paymentIntentId: string): Promise<v
         paidAt: new Date(),
       },
     });
+    console.log("[webhook] Pedido marcado como PAID:", order.id);
+
+    // 2. Decrementar estoque de cada produto
     for (const item of order.items) {
+      const product = await tx.product.findUnique({
+        where: { id: item.productId },
+        select: { stock: true, name: true },
+      });
+      if (!product) {
+        console.error("[webhook] Produto não encontrado para baixa de estoque:", item.productId);
+        continue;
+      }
+      if (product.stock < item.quantity) {
+        // Loga erro mas NÃO reverte o pagamento (já cobrado pelo Stripe)
+        console.error(
+          `[webhook] Estoque insuficiente para produto "${product.name}" (id: ${item.productId}): ` +
+            `disponível=${product.stock}, solicitado=${item.quantity}. Baixa realizada mesmo assim.`
+        );
+      }
       await tx.product.update({
         where: { id: item.productId },
         data: { stock: { decrement: item.quantity } },
       });
+      console.log(
+        `[webhook] Estoque decrementado: produto ${item.productId}, quantidade -${item.quantity}`
+      );
     }
+
+    // 3. Registrar pagamento
     await tx.payment.create({
       data: {
         orderId: order.id,
@@ -140,5 +170,6 @@ export async function handlePaymentSucceeded(paymentIntentId: string): Promise<v
         rawPayload: { paymentIntentId } as any,
       },
     });
+    console.log("[webhook] Pagamento registrado para pedido:", order.id);
   });
 }
