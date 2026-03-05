@@ -4,7 +4,7 @@ import { useState } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 
-const STRIPE_PK = "pk_test_51T5E3L4D4fwplQW7R0kwVjmned5pFhyhHRUfDcKBPoLO5PqXlK8pIj1auqlCA99fZrN4r6VPtL3vI9GUVANPcauT00zaGckZcO";
+const STRIPE_PK = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!;
 
 const stripePromise = loadStripe(STRIPE_PK);
 

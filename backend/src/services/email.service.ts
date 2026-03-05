@@ -1,11 +1,15 @@
 import nodemailer from "nodemailer";
+import dns from "dns";
 import { env } from "../config/env";
+
+// Forçar Node.js a resolver DNS para IPv4 primeiro
+// Isso resolve o erro ENETUNREACH no Railway
+dns.setDefaultResultOrder("ipv4first");
 
 const transporter = nodemailer.createTransport({
   host: env.smtpHost,
   port: env.smtpPort,
   secure: env.smtpSecure,
-  family: 4,
   auth: env.smtpUser && env.smtpPass ? { user: env.smtpUser, pass: env.smtpPass } : undefined,
 } as any);
 
