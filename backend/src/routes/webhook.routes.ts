@@ -3,4 +3,5 @@ import * as webhookController from "../controllers/webhook.controller";
 
 export const router = Router();
 
-router.post("/stripe", webhookController.stripeWebhook);
+// POST /api/webhooks/stripe (rota na base do mount)
+router.post("/", webhookController.stripeWebhook);

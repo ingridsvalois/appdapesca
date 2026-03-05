@@ -113,26 +113,29 @@ export async function logout(req: Request, res: Response): Promise<void> {
 
 export async function forgotPassword(req: Request, res: Response): Promise<void> {
   const body = (req as any).validBody as ForgotPasswordBody;
-  const user = await prisma.user.findUnique({ where: { email: body.email } });
 
-  if (user) {
-    const token = crypto.randomBytes(32).toString("hex");
-    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1h
+  try {
+    const user = await prisma.user.findUnique({ where: { email: body.email } });
 
-    await prisma.passwordResetToken.create({
-      data: {
-        userId: user.id,
-        token,
-        expiresAt,
-      },
-    });
+    if (user) {
+      const token = crypto.randomBytes(32).toString("hex");
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1h
 
-    const resetUrl = `${env.frontendUrl.replace(/\/$/, "")}/reset-password?token=${token}`;
+      await prisma.passwordResetToken.create({
+        data: {
+          userId: user.id,
+          token,
+          expiresAt,
+        },
+      });
 
-    await sendEmail({
-      to: user.email,
-      subject: "Recuperação de senha - App da Pesca",
-      html: `
+      const resetUrl = `${env.frontendUrl.replace(/\/$/, "")}/reset-password?token=${token}`;
+
+      try {
+        await sendEmail({
+          to: user.email,
+          subject: "Recuperação de senha - App da Pesca",
+          html: `
         <p>Olá, ${user.name}!</p>
         <p>Recebemos uma solicitação para redefinir a sua senha.</p>
         <p>Clique no botão abaixo para criar uma nova senha. Este link é válido por 1 hora.</p>
@@ -143,12 +146,20 @@ export async function forgotPassword(req: Request, res: Response): Promise<void>
         </p>
         <p>Se você não solicitou esta recuperação, pode ignorar este e-mail.</p>
       `,
-    });
+        });
+      } catch (emailErr) {
+        console.error("[AUTH] Erro ao enviar email de recuperação:", emailErr);
+        // NÃO relançar — resposta ao frontend deve ser sempre a mesma
+      }
+    }
+  } catch (err) {
+    console.error("[AUTH] Erro ao processar forgot-password:", err);
   }
 
-  res.json({
+  // SEMPRE retornar 200 com mensagem genérica — mesmo se o email falhar
+  res.status(200).json({
     message:
-      "Se este e-mail estiver cadastrado, você receberá um link de recuperação em breve. Verifique também sua caixa de spam.",
+      "Se o e-mail estiver cadastrado, você receberá instruções de recuperação em breve. Verifique também sua caixa de spam.",
   });
 }
 

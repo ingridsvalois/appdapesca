@@ -21,6 +21,7 @@ export const env = {
   smtpUser: process.env.SMTP_USER || "",
   smtpPass: process.env.SMTP_PASS || "",
   smtpFrom: process.env.SMTP_FROM || process.env.EMAIL_FROM || "",
+  adminEmail: process.env.ADMIN_EMAIL || "",
 };
 
 if (!env.databaseUrl) {

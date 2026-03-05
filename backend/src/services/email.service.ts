@@ -5,6 +5,7 @@ const transporter = nodemailer.createTransport({
   host: env.smtpHost,
   port: env.smtpPort,
   secure: env.smtpSecure,
+  family: 4, // Forçar IPv4 — Railway não suporta IPv6
   auth: env.smtpUser && env.smtpPass ? { user: env.smtpUser, pass: env.smtpPass } : undefined,
 });
 
