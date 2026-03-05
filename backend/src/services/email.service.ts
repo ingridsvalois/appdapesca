@@ -5,9 +5,9 @@ const transporter = nodemailer.createTransport({
   host: env.smtpHost,
   port: env.smtpPort,
   secure: env.smtpSecure,
-  family: 4, // Forçar IPv4 — Railway não suporta IPv6
+  family: 4,
   auth: env.smtpUser && env.smtpPass ? { user: env.smtpUser, pass: env.smtpPass } : undefined,
-});
+} as any);
 
 export interface SendEmailOptions {
   to: string;
@@ -32,7 +32,6 @@ export async function sendEmail(options: SendEmailOptions): Promise<void> {
     });
     console.log("[EMAIL] E-mail enviado com sucesso:", result.messageId, "para:", options.to);
   } catch (error) {
-    // NÃO relançar o erro (segurança: não revelar falhas ao usuário)
     console.error("[EMAIL] Falha ao enviar e-mail:", {
       to: options.to,
       subject: options.subject,
@@ -40,4 +39,3 @@ export async function sendEmail(options: SendEmailOptions): Promise<void> {
     });
   }
 }
-
