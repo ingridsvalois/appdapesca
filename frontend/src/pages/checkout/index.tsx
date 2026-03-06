@@ -434,21 +434,20 @@ export default function Checkout() {
         {/* PASSO 2: Selecionar método + Pagar */}
         {step === 2 && (
           <>
-            {error && (
-              <p className="text-red-600 text-sm mb-4 bg-red-50 p-3 rounded" role="alert">
-                {error}
-              </p>
-            )}
             <CheckoutPayment
               clientSecret={clientSecret}
               total={total}
+              processing={processing}
+              apiError={error}
               onSuccess={onPaymentSuccess}
               onBack={() => {
                 setStep(1);
                 setClientSecret(null);
                 setSelectedPaymentMethod(null);
+                setError("");
               }}
               onMethodSelect={handleMethodSelect}
+              onRetry={() => setError("")}
             />
           </>
         )}

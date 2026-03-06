@@ -6,7 +6,7 @@ import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-
 
 const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ||
-    "pk_live_51ROiKPCdvLsqGFNBCbFkKxQUkHjJyCSnbCuMy31W6O7VgBGgVqBMYMKJlViqBXCjpKeIUasTdYiaeY06G3CrhxaF00CfS7cwyR"
+    "pk_live_51T5E36KjbqHlnr7OJhlE29VTBf7Ch4rDXbumrOwK0A9drE9NHCobhXWxNtUMVtJaMc4vJ9EG4VUKwTJP0FFxp0TE00b8H4ebea"
 );
 
 type PaymentMethodType = "credit" | "debit" | "pix";
@@ -255,15 +255,21 @@ function PixPaymentForm({
 export default function CheckoutPayment({
   clientSecret,
   total,
+  processing = false,
+  apiError = "",
   onSuccess,
   onBack,
   onMethodSelect,
+  onRetry,
 }: {
   clientSecret: string | null;
   total: number;
+  processing?: boolean;
+  apiError?: string;
   onSuccess: () => void;
   onBack: () => void;
   onMethodSelect?: (method: string) => void;
+  onRetry?: () => void;
 }) {
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethodType | null>(null);
 
@@ -296,10 +302,33 @@ export default function CheckoutPayment({
     return (
       <div className="space-y-6">
         <MethodSelector selected={selectedMethod} onSelect={handleMethodSelect} />
-        <div className="flex items-center justify-center p-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#308E10]"></div>
-          <span className="ml-3 text-gray-600">Preparando pagamento...</span>
-        </div>
+        {apiError ? (
+          <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-red-700 text-sm mb-3">{apiError}</p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedMethod(null);
+                  onRetry?.();
+                }}
+                className="btn-primary py-2 px-4"
+              >
+                Escolher outro método
+              </button>
+              <button type="button" onClick={onBack} className="btn-primary py-2 px-4">
+                Voltar
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-center p-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#308E10]"></div>
+            <span className="ml-3 text-gray-600">
+              {processing ? "Preparando pagamento..." : "Aguardando..."}
+            </span>
+          </div>
+        )}
       </div>
     );
   }

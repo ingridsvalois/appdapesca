@@ -1,3 +1,4 @@
+import "./dns-prefs"; // Força IPv4 antes de qualquer conexão de rede
 import { app } from "./app";
 import { env } from "./config/env";
 
