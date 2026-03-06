@@ -1,0 +1,63 @@
+# ============================================
+# APP DA PESCA — REGRAS DO PROJETO PARA O CURSOR
+# ============================================
+
+## STACK TÉCNICA
+- Frontend: Next.js + TypeScript (deploy: Railway) — pasta `frontend/`
+- Backend: Express + Prisma + TypeScript (deploy: Railway) — pasta `backend/`
+- Banco de Dados: PostgreSQL (Railway)
+- Pagamentos: Stripe (modo PRODUÇÃO)
+- Email: Nodemailer + Gmail SMTP
+- ORM: Prisma
+
+## URLs DE PRODUÇÃO
+- Frontend: https://appdapesca.up.railway.app
+- Backend API: https://appdapesca-production.up.railway.app
+- Webhook Stripe: https://appdapesca-production.up.railway.app/api/webhooks/stripe
+
+---
+
+## REGRAS DE CÓDIGO
+
+### Geral
+- Sempre use TypeScript com tipagem explícita. Evite `any` ao máximo.
+- Sempre mostre o arquivo COMPLETO após qualquer edição. Nunca use "..." ou "// restante do código".
+- Trate todos os erros com try/catch e logs descritivos.
+- Use prefixo em colchetes nos logs: `[WEBHOOK]`, `[EMAIL]`, `[STRIPE]`, `[AUTH]`, `[ORDER]`.
+- Exporte funções com `export async function nome()`, não como default export.
+- Quando encontrar erros em cascata, resolva a causa raiz primeiro.
+
+### Next.js / Frontend
+- Variáveis `NEXT_PUBLIC_*` são substituídas em BUILD TIME, não em runtime.
+- Após alterar qualquer variável de ambiente, o frontend precisa de REBUILD (não apenas redeploy).
+- Sempre valide variáveis de ambiente antes de usá-las. Nunca assuma que existem.
+- Se uma variável NEXT_PUBLIC_ estiver undefined, exiba fallback visual com mensagem de erro.
+- Injete variáveis críticas também via `next.config.js > env: {}` como camada extra de segurança.
+
+### Express / Backend
+- A rota de webhook do Stripe DEVE vir ANTES de `express.json()` no `app.ts`.
+- O webhook DEVE usar `express.raw({ type: 'application/json' })` — nunca `express.json()`.
+- Ordem obrigatória no app.ts:
+  1. CORS
+  2. Rota webhook (com express.raw)
+  3. express.json()
+  4. Todas as outras rotas
+
+### Stripe
+- NUNCA faça hardcode de chaves secretas (`sk_live_`, `sk_test_`) no código-fonte.
+- Chaves públicas (`pk_live_`, `pk_test_`) podem existir em `.env.production` do frontend (são públicas por design).
+- NUNCA misture chaves de teste com produção no mesmo ambiente.
+- `STRIPE_WEBHOOK_SECRET` sempre começa com `whsec_`. Se tiver `pk_` ou `sk_`, está errado.
+- Sempre passe `metadata.orderId` ao criar PaymentIntents — o webhook depende disso.
+- Sempre verifique a assinatura do webhook com `stripe.webhooks.constructEvent()`.
+
+### Prisma
+- Após alterar `schema.prisma`, sempre instrua: `npx prisma migrate dev --name descricao` e `npx prisma generate`.
+- Use transações (`prisma.$transaction`) quando atualizar pedido + estoque juntos.
+- Use `decrement` do Prisma para baixa de estoque: `data: { stock: { decrement: quantity } }`.
+
+### Email / SMTP
+- SEMPRE adicione no topo do arquivo de email:
+  ```typescript
+  import dns from "dns";
+  dns.setDefaultResultOrder("ipv4first");

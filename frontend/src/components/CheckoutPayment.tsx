@@ -4,9 +4,15 @@ import { useState } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 
-const STRIPE_PK = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!;
+const stripePublicKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
 
-const stripePromise = loadStripe(STRIPE_PK);
+if (!stripePublicKey) {
+  console.error(
+    "[STRIPE] NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY está undefined. Verifique variáveis de ambiente."
+  );
+}
+
+const stripePromise = stripePublicKey ? loadStripe(stripePublicKey) : null;
 
 type PaymentMethodType = "credit" | "debit" | "pix";
 
@@ -310,6 +316,14 @@ export default function CheckoutPayment({
       fontFamily: "system-ui, sans-serif",
     },
   };
+
+  if (!stripePromise) {
+    return (
+      <div className="text-red-500 p-4 border border-red-300 rounded">
+        Erro: Configuração de pagamento indisponível. Tente novamente mais tarde.
+      </div>
+    );
+  }
 
   // Passo 3: Formulário de pagamento
   if (selectedMethod === "pix") {
