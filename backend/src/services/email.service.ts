@@ -3,20 +3,50 @@ import { promisify } from "util";
 import nodemailer from "nodemailer";
 import { env } from "../config/env";
 
-const dnsLookup = promisify(dns.lookup);
+// ✅ MUDANÇA CHAVE: resolve4 em vez de lookup
+// dns.resolve4 consulta registros A diretamente (só IPv4)
+// dns.lookup usa o resolver do OS (Railway pode retornar IPv6)
+const dnsResolve4 = promisify(dns.resolve4);
+
 const smtpHost = env.smtpHost || "smtp.gmail.com";
 
 let transporterInstance: nodemailer.Transporter | null = null;
+let resolvedIPv4: string | null = null;
 
+// ============================================================
+// RESOLVER IPv4
+// ============================================================
+async function getIPv4Address(): Promise<string> {
+  if (resolvedIPv4) return resolvedIPv4;
+
+  try {
+    // ✅ resolve4 retorna APENAS endereços IPv4 (registros DNS tipo A)
+    const addresses = await dnsResolve4(smtpHost);
+    if (addresses && addresses.length > 0) {
+      resolvedIPv4 = addresses[0];
+      console.log(`[EMAIL] ${smtpHost} → IPv4: ${resolvedIPv4}`);
+      return resolvedIPv4;
+    }
+  } catch (err) {
+    console.error(`[EMAIL] Falha ao resolver IPv4 de ${smtpHost}:`, err);
+  }
+
+  // Fallback: IP conhecido do Gmail SMTP
+  resolvedIPv4 = "142.250.115.108";
+  console.warn(`[EMAIL] Usando fallback IPv4 hardcoded: ${resolvedIPv4}`);
+  return resolvedIPv4;
+}
+
+// ============================================================
+// TRANSPORTER
+// ============================================================
 async function getTransporter(): Promise<nodemailer.Transporter> {
   if (transporterInstance) return transporterInstance;
 
-  // Resolve hostname para IPv4 explicitamente (Railway falha com IPv6)
-  const { address } = await dnsLookup(smtpHost, { family: 4 });
-  console.log("[EMAIL] SMTP resolvido para IPv4:", address);
+  const ipv4Address = await getIPv4Address();
 
   transporterInstance = nodemailer.createTransport({
-    host: address,
+    host: ipv4Address,                    // ✅ IP direto, sem resolução DNS
     port: env.smtpPort || 587,
     secure: false,
     auth:
@@ -24,19 +54,32 @@ async function getTransporter(): Promise<nodemailer.Transporter> {
         ? { user: env.smtpUser, pass: env.smtpPass }
         : undefined,
     tls: {
-      servername: smtpHost,
+      servername: smtpHost,               // ✅ Necessário para validar certificado TLS
       rejectUnauthorized: false,
     },
+    connectionTimeout: 10000,             // ✅ Timeout de conexão
+    greetingTimeout: 10000,
+    socketTimeout: 15000,
   } as any);
 
-  transporterInstance
-    .verify()
-    .then(() => console.log("[EMAIL] Servidor SMTP conectado com sucesso (IPv4)"))
-    .catch((err) => console.error("[EMAIL] Falha na verificação SMTP:", err));
+  // ✅ AWAIT na verificação (não fire-and-forget)
+  try {
+    await transporterInstance.verify();
+    console.log("[EMAIL] ✅ SMTP conectado com sucesso (IPv4:", ipv4Address + ")");
+  } catch (err) {
+    console.error("[EMAIL] ❌ Falha na verificação SMTP:", err);
+    // ✅ Invalida para tentar de novo na próxima chamada
+    transporterInstance = null;
+    resolvedIPv4 = null;
+    throw err;
+  }
 
   return transporterInstance;
 }
 
+// ============================================================
+// ENVIO GENÉRICO
+// ============================================================
 export interface SendEmailOptions {
   to: string;
   subject: string;
@@ -46,7 +89,7 @@ export interface SendEmailOptions {
 export async function sendEmail(options: SendEmailOptions): Promise<void> {
   if (!env.smtpHost || !env.smtpFrom) {
     console.warn(
-      "[EMAIL] SMTP não configurado. Defina SMTP_HOST, SMTP_FROM (ou EMAIL_FROM) no .env. E-mail não será enviado."
+      "[EMAIL] SMTP não configurado. Defina SMTP_HOST, SMTP_FROM no .env."
     );
     return;
   }
@@ -59,16 +102,22 @@ export async function sendEmail(options: SendEmailOptions): Promise<void> {
       subject: options.subject,
       html: options.html,
     });
-    console.log("[EMAIL] E-mail enviado com sucesso:", result.messageId, "para:", options.to);
+    console.log("[EMAIL] ✅ Enviado:", result.messageId, "para:", options.to);
   } catch (error) {
-    console.error("[EMAIL] Falha ao enviar e-mail:", {
+    console.error("[EMAIL] ❌ Falha ao enviar:", {
       to: options.to,
       subject: options.subject,
       error: error instanceof Error ? error.message : String(error),
     });
+    // ✅ Invalida transporter para forçar reconexão
+    transporterInstance = null;
+    resolvedIPv4 = null;
   }
 }
 
+// ============================================================
+// NOTIFICAÇÃO ADMIN
+// ============================================================
 export async function sendAdminNotificationEmail(order: {
   id: string;
   totalAmount: { toString: () => string };
@@ -81,14 +130,16 @@ export async function sendAdminNotificationEmail(order: {
 }): Promise<void> {
   const adminEmail = env.adminEmail || env.smtpUser;
   if (!adminEmail || !env.smtpFrom) {
-    console.warn("[EMAIL] ADMIN_EMAIL ou SMTP_FROM não configurado. Notificação ao admin ignorada.");
+    console.warn("[EMAIL] ADMIN_EMAIL ou SMTP_FROM não configurado.");
     return;
   }
 
   const itemsList = order.items
     .map(
       (item) =>
-        `- ${item.product.name} x${item.quantity} — R$ ${(Number(item.unitPrice.toString()) * item.quantity).toFixed(2)}`
+        `- ${item.product.name} x${item.quantity} — R$ ${(
+          Number(item.unitPrice.toString()) * item.quantity
+        ).toFixed(2)}`
     )
     .join("\n");
 
@@ -113,14 +164,17 @@ ${itemsList}
 Total: R$ ${total.toFixed(2)}
 
 Acesse o painel admin para mais detalhes.
-    `.trim(),
+      `.trim(),
     });
-    console.log("[EMAIL] Notificação admin enviada:", result.messageId, "para:", adminEmail);
+    console.log("[EMAIL] ✅ Notificação admin enviada:", result.messageId);
   } catch (error) {
-    console.error("[EMAIL] Falha ao enviar notificação ao admin:", {
+    console.error("[EMAIL] ❌ Falha notificação admin:", {
       orderId: order.id,
       to: adminEmail,
       error: error instanceof Error ? error.message : String(error),
     });
+    // ✅ Invalida transporter
+    transporterInstance = null;
+    resolvedIPv4 = null;
   }
 }
