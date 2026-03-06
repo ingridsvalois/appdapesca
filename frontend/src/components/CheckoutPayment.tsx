@@ -4,15 +4,10 @@ import { useState } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 
-const stripePublicKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
-
-if (!stripePublicKey) {
-  console.error(
-    "[STRIPE] NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY está undefined. Verifique variáveis de ambiente."
-  );
-}
-
-const stripePromise = stripePublicKey ? loadStripe(stripePublicKey) : null;
+const stripePromise = loadStripe(
+  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ||
+    "pk_live_51ROiKPCdvLsqGFNBCbFkKxQUkHjJyCSnbCuMy31W6O7VgBGgVqBMYMKJlViqBXCjpKeIUasTdYiaeY06G3CrhxaF00CfS7cwyR"
+);
 
 type PaymentMethodType = "credit" | "debit" | "pix";
 
@@ -316,14 +311,6 @@ export default function CheckoutPayment({
       fontFamily: "system-ui, sans-serif",
     },
   };
-
-  if (!stripePromise) {
-    return (
-      <div className="text-red-500 p-4 border border-red-300 rounded">
-        Erro: Configuração de pagamento indisponível. Tente novamente mais tarde.
-      </div>
-    );
-  }
 
   // Passo 3: Formulário de pagamento
   if (selectedMethod === "pix") {

@@ -2,20 +2,20 @@ import dns from "dns";
 import nodemailer from "nodemailer";
 import { env } from "../config/env";
 
-// Forçar Node.js a resolver DNS para IPv4 primeiro (Railway não suporta IPv6)
-dns.setDefaultResultOrder("ipv4first");
-
 const transporter = nodemailer.createTransport({
   host: env.smtpHost || "smtp.gmail.com",
   port: env.smtpPort || 587,
   secure: false,
-  family: 4, // Forçar IPv4 — Railway não suporta IPv6
   auth:
     env.smtpUser && env.smtpPass
       ? { user: env.smtpUser, pass: env.smtpPass }
       : undefined,
   tls: {
     rejectUnauthorized: false,
+  },
+  // Força resolução IPv4 — Railway falha com IPv6
+  lookup: (hostname: string, options: any, callback: any) => {
+    return dns.lookup(hostname, { family: 4 }, callback);
   },
 } as any);
 
