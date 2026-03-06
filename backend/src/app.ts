@@ -25,11 +25,14 @@ app.set("trust proxy", 1);
 
 app.use(
   cors({
-    origin: env.frontendUrl,
+    origin: [
+      "https://www.appdapesca.com.br",
+      "https://appdapesca.com.br",
+      "https://appdapesca.up.railway.app"
+    ],
     credentials: true,
   })
 );
-
 app.use(
   helmet({
     contentSecurityPolicy: env.nodeEnv === "production" ? undefined : false,
