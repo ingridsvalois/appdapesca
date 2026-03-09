@@ -8,7 +8,8 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Resend grátis exige enviar de: onboarding@resend.dev
 // (depois que adicionar domínio próprio, troca para o seu)
-const EMAIL_FROM = process.env.RESEND_FROM || "App da Pesca <onboarding@resend.dev>";
+const EMAIL_FROM = process.env.RESEND_FROM || "App da Pesca <noreply@appdapesca.com.br>";
+
 const ADMIN_EMAIL = env.adminEmail || env.smtpUser;
 
 // ============================================================
