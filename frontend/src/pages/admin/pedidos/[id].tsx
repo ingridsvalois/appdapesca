@@ -267,5 +267,3 @@ export default function AdminPedidoDetalhe() {
     </AdminLayout>
   );
 }
-
-export const getServerSideProps = async () => ({ props: {} });

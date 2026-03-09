@@ -440,5 +440,3 @@ export default function AdminProdutoEditar() {
     </AdminLayout>
   );
 }
-
-export const getServerSideProps = async () => ({ props: {} });

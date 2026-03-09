@@ -256,5 +256,3 @@ export default function AdminPedidos() {
     </AdminLayout>
   );
 }
-
-export const getServerSideProps = async () => ({ props: {} });
