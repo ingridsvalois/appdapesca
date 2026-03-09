@@ -1,9 +1,9 @@
-import type { AppProps } from "next/app";
+import type { AppProps, AppContext } from "next/app";
+import NextApp from "next/app";
 import "@/styles/globals.css";
 import { AuthProvider } from "@/context/AuthContext";
-import dynamic from "next/dynamic";
 
-function App({ Component, pageProps }: AppProps) {
+export default function App({ Component, pageProps }: AppProps) {
   return (
     <AuthProvider>
       <Component {...pageProps} />
@@ -11,4 +11,9 @@ function App({ Component, pageProps }: AppProps) {
   );
 }
 
-export default dynamic(() => Promise.resolve(App), { ssr: false });
+// Desabilita Automatic Static Optimization para TODAS as páginas
+// Next.js não vai mais tentar pré-renderizar no build
+App.getInitialProps = async (appContext: AppContext) => {
+  const appProps = await NextApp.getInitialProps(appContext);
+  return { ...appProps };
+};
