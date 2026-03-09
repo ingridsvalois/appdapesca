@@ -184,3 +184,5 @@ export default function AdminProdutos() {
     </AdminLayout>
   );
 }
+
+export const getServerSideProps = async () => ({ props: {} });
